@@ -1,0 +1,270 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Radiometer</title><meta name="generator" content="MATLAB 9.7"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2020-05-14"><meta name="DC.source" content="Radiometer.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">classdef</span> Radiometer &lt; handle &amp; matlab.mixin.CustomDisplay
+    <span class="comment">%Radiometer Class for Dexter Radiometer connected to ADS1115</span>
+<span class="comment">    %{
+</span><span class="comment">    The constructor sets up the I2C device object. The standard address is
+</span><span class="comment">    0x48, but can be set to 0x49,0X4A,or 0x4B. For Radiometer, make sure
+</span><span class="comment">    address is 0x48 or 0x49 and for thermistors it is  0x4A or0x4B.
+</span><span class="comment">
+</span><span class="comment">    Default pin and voltage scale are 0 and 0.256. To change simply add in
+</span><span class="comment">    constructor.
+</span><span class="comment">
+</span><span class="comment">    The Read method requires the input of 2 thermistor classes to help
+</span><span class="comment">    compensate for cold junction and ambient heat. You can also add a
+</span><span class="comment">    correction for viewing angle(in degrees),  but if you do not enter one it is
+</span><span class="comment">    assumed to be 0 degrees.
+</span><span class="comment">
+</span><span class="comment">    F is in mW/cm^2 and L is in mW/(cm^2*sr)
+</span><span class="comment">
+</span><span class="comment">    n,F1,F2,and F3 are constants that depend on geometry and radiative
+</span><span class="comment">    properties of each surface involved. A 4 point calibration will be done
+</span><span class="comment">    with a blackbody in Professor Miller's Lab to determine their values.
+</span><span class="comment">    %}
+</span>
+    <span class="keyword">properties</span>
+        PINS = [0,1];
+        V_SCALE = 0.256;
+        Address = hex2dec(<span class="string">'0x48'</span>);
+        AR
+        Rad
+        theta = 0;
+        n = 1;
+        F1 = 1;
+        F2 = 1;
+        F3 = 1;
+        Res = 1;
+        sr = 1;
+    <span class="keyword">end</span>
+
+    <span class="keyword">methods</span>
+        <span class="keyword">function</span> obj = Radiometer(arduino,addrs,v_scale,pins)
+            <span class="comment">%UNTITLED4 Construct an instance of this class</span>
+            <span class="comment">%   Detailed explanation goes here</span>
+            <span class="keyword">switch</span> nargin
+                <span class="keyword">case</span> 2
+                    obj.Address = addrs;
+                <span class="keyword">case</span> 3
+                    obj.V_SCALE = v_scale;
+                    obj.Address = addrs;
+                <span class="keyword">case</span> 4
+                    obj.V_SCALE = vscale;
+                    obj.Address = addrs;
+                    obj.PINS = pins;
+            <span class="keyword">end</span>
+
+            obj.AR = arduino;
+            obj.Rad = ads1115(obj.AR, obj.Address);
+
+            obj.Rad.VoltageScale = obj.V_SCALE;
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> [L,F] = Read(obj,thermistor_1,thermistor_2,theta)
+            <span class="comment">%Requires 2 thermistor objects as input,can factor in viewing angle</span>
+            <span class="keyword">switch</span> nargin
+                <span class="keyword">case</span> 4
+                    obj.theta = theta;
+            <span class="keyword">end</span>
+
+            v = readVoltage(obj.Rad,obj.PINS(1),obj.PINS(2));
+
+            T_d = thermistor_1.Read();
+            T_opt = thermistor_2.Read();
+
+
+            L = ((v/obj.Res) - (obj.F1 * (T_opt^obj.n)) + (obj.F2 * (T_d^obj.n))) * (obj.F3/cosd(theta));
+            F = L * obj.sr;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    <span class="keyword">methods</span>
+        <span class="comment">%This simply allows it to take hex or numeric input</span>
+        <span class="keyword">function</span> set.Address(obj, value)
+            <span class="keyword">if</span> isnumeric(value)
+                validateattributes(value, {<span class="string">'numeric'</span>}, <span class="keyword">...</span>
+                    {<span class="string">'scalar'</span>, <span class="string">'nonnegative'</span>}, <span class="string">''</span>, <span class="string">'Address'</span>);
+            <span class="keyword">else</span>
+                validateattributes(value, {<span class="string">'char'</span>}, <span class="keyword">...</span>
+                    {<span class="string">'nonempty'</span>}, <span class="string">''</span>, <span class="string">'Address'</span>);
+                value = obj.hex2dec(value);
+            <span class="keyword">end</span>
+            <span class="keyword">if</span> (value &lt; obj.hex2dec(<span class="string">'0x48'</span>)) || (value &gt; obj.hex2dec(<span class="string">'0x51'</span>))
+                error(<span class="string">'raspi:ads1115:InvalidI2CAddress'</span>, <span class="keyword">...</span>
+                    <span class="string">'Invalid I2C address. I2C address must be one of the following: 0x48, 0x49, 0x50, 0x51'</span>);
+            <span class="keyword">end</span>
+            obj.Address = value;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput error">Error using hex2dec&gt;hex2decImpl (line 58)
+Invalid default value for property 'Address' in class 'Radiometer':
+Input to hex2dec should have just 0-9, a-f, or A-F.
+
+Error in hex2dec (line 21)
+        d = hex2decImpl(h);
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2019b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+classdef Radiometer < handle & matlab.mixin.CustomDisplay
+    %Radiometer Class for Dexter Radiometer connected to ADS1115
+    %{   
+    The constructor sets up the I2C device object. The standard address is
+    0x48, but can be set to 0x49,0X4A,or 0x4B. For Radiometer, make sure 
+    address is 0x48 or 0x49 and for thermistors it is  0x4A or0x4B.
+    
+    Default pin and voltage scale are 0 and 0.256. To change simply add in
+    constructor. 
+    
+    The Read method requires the input of 2 thermistor classes to help
+    compensate for cold junction and ambient heat. You can also add a
+    correction for viewing angle(in degrees),  but if you do not enter one it is
+    assumed to be 0 degrees.
+    
+    F is in mW/cm^2 and L is in mW/(cm^2*sr)
+    
+    n,F1,F2,and F3 are constants that depend on geometry and radiative
+    properties of each surface involved. A 4 point calibration will be done
+    with a blackbody in Professor Miller's Lab to determine their values.
+    %}
+    
+    properties
+        PINS = [0,1];
+        V_SCALE = 0.256;
+        Address = hex2dec('0x48');
+        AR
+        Rad
+        theta = 0;
+        n = 1;
+        F1 = 1;
+        F2 = 1;
+        F3 = 1;
+        Res = 1;
+        sr = 1;
+    end
+    
+    methods
+        function obj = Radiometer(arduino,addrs,v_scale,pins)
+            %UNTITLED4 Construct an instance of this class
+            %   Detailed explanation goes here
+            switch nargin
+                case 2
+                    obj.Address = addrs;
+                case 3
+                    obj.V_SCALE = v_scale;
+                    obj.Address = addrs;
+                case 4
+                    obj.V_SCALE = vscale;
+                    obj.Address = addrs;
+                    obj.PINS = pins;
+            end
+            
+            obj.AR = arduino;
+            obj.Rad = ads1115(obj.AR, obj.Address);
+            
+            obj.Rad.VoltageScale = obj.V_SCALE;
+        end
+        
+        function [L,F] = Read(obj,thermistor_1,thermistor_2,theta)
+            %Requires 2 thermistor objects as input,can factor in viewing angle 
+            switch nargin
+                case 4
+                    obj.theta = theta;
+            end
+            
+            v = readVoltage(obj.Rad,obj.PINS(1),obj.PINS(2));
+            
+            T_d = thermistor_1.Read();
+            T_opt = thermistor_2.Read();
+            
+            
+            L = ((v/obj.Res) - (obj.F1 * (T_opt^obj.n)) + (obj.F2 * (T_d^obj.n))) * (obj.F3/cosd(theta));
+            F = L * obj.sr;
+        end
+    end
+    methods
+        %This simply allows it to take hex or numeric input
+        function set.Address(obj, value)
+            if isnumeric(value)
+                validateattributes(value, {'numeric'}, ...
+                    {'scalar', 'nonnegative'}, '', 'Address');
+            else
+                validateattributes(value, {'char'}, ...
+                    {'nonempty'}, '', 'Address');
+                value = obj.hex2dec(value);
+            end
+            if (value < obj.hex2dec('0x48')) || (value > obj.hex2dec('0x51'))
+                error('raspi:ads1115:InvalidI2CAddress', ...
+                    'Invalid I2C address. I2C address must be one of the following: 0x48, 0x49, 0x50, 0x51');
+            end
+            obj.Address = value;
+        end
+    end
+end
+
+
+##### SOURCE END #####
+--></body></html>

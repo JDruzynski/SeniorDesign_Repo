@@ -1,0 +1,714 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>ads1115</title><meta name="generator" content="MATLAB 9.7"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2020-05-14"><meta name="DC.source" content="ads1115.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">classdef</span> ads1115 &lt; handle &amp; matlab.mixin.CustomDisplay
+    <span class="comment">%ADS1115 Analog-to-Digital converter.</span>
+    <span class="comment">%</span>
+    <span class="comment">% adc = ads1115(rpi, bus) creates a ADS1115 ADC object attached to the</span>
+    <span class="comment">% specified I2C bus. The first parameter, rpi, is a raspi object. The</span>
+    <span class="comment">% I2C address of the ADS1115 ADC defaults to '0x48'.</span>
+    <span class="comment">%</span>
+    <span class="comment">% adc = ads1115(rpi, bus, address) creates a ADS1115 ADC object</span>
+    <span class="comment">% attached to the specified I2C bus and I2C address. Use this form if</span>
+    <span class="comment">% you used the ADDR pin to change the I2C address of the ADS1115 from</span>
+    <span class="comment">% the default '0x48' to something else.</span>
+    <span class="comment">%</span>
+    <span class="comment">% readVoltage(adc, AINp) reads the single-ended voltage measurement</span>
+    <span class="comment">% from AINp input port.</span>
+    <span class="comment">%</span>
+    <span class="comment">% readVoltage(adc, AINp, AINn) reads the differential voltage</span>
+    <span class="comment">% measurement between AINp and AINn input ports.</span>
+    <span class="comment">%</span>
+    <span class="comment">% The OperatingMode property of the ADS1115 ADC object determines power</span>
+    <span class="comment">% consumption, speed and accuracy. The default OperatingMode is</span>
+    <span class="comment">% 'single-shot' meaning that the ADS1115 performs a single analog to</span>
+    <span class="comment">% digital conversion upon request and goes to power save mode. In</span>
+    <span class="comment">% continuous mode, the device performs continuous conversions.</span>
+    <span class="comment">%</span>
+    <span class="comment">% The SamplesPerSecond property sets the conversion rate.</span>
+    <span class="comment">%</span>
+    <span class="comment">% The VoltageScale property of the ADS1115 ADC object determines the</span>
+    <span class="comment">% setting of the Programmable Gain Amplifier (PGA) value applied before</span>
+    <span class="comment">% analog to digital conversion. See table below to correlate the</span>
+    <span class="comment">% input voltage scale with the PGA value:</span>
+    <span class="comment">%</span>
+    <span class="comment">% VoltageScale | PGA Value</span>
+    <span class="comment">% -------------------------</span>
+    <span class="comment">%    6.144  |    2/3</span>
+    <span class="comment">%    4.096  |    1</span>
+    <span class="comment">%    2.048  |    2</span>
+    <span class="comment">%    1.024  |    4</span>
+    <span class="comment">%    0.512  |    8</span>
+    <span class="comment">%    0.256  |    16</span>
+    <span class="comment">%</span>
+    <span class="comment">% &lt;a href="http://www.ti.com/lit/gpn/ads1115"&gt;Device Datasheet&lt;/a&gt;</span>
+    <span class="comment">%</span>
+    <span class="comment">% NOTE: Do not apply voltages excedding VDD+0.3V to any input pin.</span>
+
+    <span class="comment">% Copyright 2014 The MathWorks, Inc.</span>
+
+    <span class="keyword">properties</span> (SetAccess = private, GetAccess = public)
+        Address = bin2dec(<span class="string">'1001000'</span>) <span class="comment">% Default address 0x48</span>
+    <span class="keyword">end</span>
+
+    <span class="keyword">properties</span> (Access = public)
+        OperatingMode
+        VoltageScale
+        SamplesPerSecond
+    <span class="keyword">end</span>
+
+    <span class="keyword">properties</span> (Access = private)
+        i2cObj
+        PGAbits
+        AINp
+        AINn
+        NumInputs = 4
+        ConfigReg
+    <span class="keyword">end</span>
+
+    <span class="keyword">properties</span> (Constant, Hidden)
+        AvailableSamplesPerSecond = [8, 16, 32, 64, 128, 250, 475, 860]
+        AvailableVoltageScale = [6.144, 4.096, 2.048, 1.024, 0.512, 0.256]
+        AvailableOperatingMode = {<span class="string">'single-shot'</span>, <span class="string">'continuous'</span>}
+    <span class="keyword">end</span>
+
+    <span class="keyword">properties</span> (Constant, Access = private)
+        <span class="comment">% Register addresses</span>
+        CONVERSION_REG = 0
+        CONFIG_REG     = 1
+        LOTHRESH_REG   = 2
+        HITHRESH_REG   = 3
+
+        <span class="comment">% Config register bit shifts</span>
+        CONFIG_OS_SHIFT        = 15
+        CONFIG_MUX_SHIFT       = 12
+        CONFIG_PGA_SHIFT       = 9
+        CONFIG_MODE_SHIFT      = 8
+        CONFIG_DR_SHIFT        = 5
+        CONFIG_COMP_MODE_SHIFT = 4
+        CONFIG_COMP_POL_SHIFT  = 3
+        CONFIG_COMP_LAT_SHIFT  = 2
+        CONFIG_COMP_QUE_SHIFT  = 0
+
+        <span class="comment">% Full scale for ADS1115 is 4.096 volts</span>
+        FS_VOLTAGE = 4.096
+
+        <span class="comment">% 16-bit ADC result needs to be scaled by this value</span>
+        ADC_SCALAR = 2^15 - 1
+    <span class="keyword">end</span>
+
+    <span class="keyword">methods</span>
+        <span class="keyword">function</span> obj = ads1115(raspiObj, address)
+            <span class="comment">% Set I2C address if not using default</span>
+            <span class="keyword">if</span> nargin &gt; 1
+                obj.Address = address;
+            <span class="keyword">end</span>
+
+            <span class="comment">% Set defaults</span>
+            obj.SamplesPerSecond = 128;
+            obj.OperatingMode = <span class="string">'single-shot'</span>;
+            obj.VoltageScale = 4.096;
+
+            <span class="comment">% Initialize config register value</span>
+            obj.ConfigReg = 0;
+
+            <span class="comment">% Create an i2cdev object to talk to ADS1115</span>
+            obj.i2cObj = i2cdev(raspiObj, obj.Address);
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> voltage = readVoltage(obj, AINp, AINn)
+            <span class="comment">% voltage = readVoltage(obj, AINp) reads the single-ended input</span>
+            <span class="comment">% voltage value at channe AINp.</span>
+            <span class="comment">%</span>
+            <span class="comment">% voltage = readVoltage(obj, AINp, AINn) reads the input</span>
+            <span class="comment">% voltage value that is the difference between AINp and AINn.</span>
+            validateattributes(AINp, {<span class="string">'numeric'</span>}, <span class="keyword">...</span>
+                {<span class="string">'scalar'</span>, <span class="string">'&gt;='</span>, 0, <span class="string">'&lt;='</span>, obj.NumInputs-1}, <span class="string">''</span>, <span class="string">'AINp'</span>);
+            <span class="keyword">if</span> nargin &gt; 2
+                validateattributes(AINn, {<span class="string">'numeric'</span>}, <span class="keyword">...</span>
+                    {<span class="string">'scalar'</span>, <span class="string">'&gt;='</span>, 0, <span class="string">'&lt;='</span>, obj.NumInputs-1}, <span class="string">''</span>, <span class="string">'AINn'</span>);
+            <span class="keyword">else</span>
+                AINn = -1;
+            <span class="keyword">end</span>
+
+            <span class="comment">% Configure ADC and read requested conversion value</span>
+            configReg = getConfigReg(obj, AINp, AINn);
+            <span class="keyword">if</span> isequal(obj.OperatingMode, <span class="string">'single-shot'</span>) || <span class="keyword">...</span>
+                    (configReg ~= obj.ConfigReg)
+                obj.ConfigReg = configReg;
+                configureDevice(obj);
+            <span class="keyword">end</span>
+
+            <span class="comment">% Each I2C transaction with raspi object takes about 5ms. If</span>
+            <span class="comment">% conversion time is greater than this we must wait</span>
+            <span class="keyword">if</span> isequal(obj.OperatingMode, <span class="string">'single-shot'</span>) &amp;&amp; <span class="keyword">...</span>
+                    (1/obj.SamplesPerSecond &gt; 0.005)
+                pause(1/obj.SamplesPerSecond);
+            <span class="keyword">end</span>
+
+            <span class="comment">% Read raw ADC conversion value and convert to voltage</span>
+            data = readRegister(obj.i2cObj, obj.CONVERSION_REG, <span class="string">'int16'</span>);
+            voltage = double(swapbytes(data)) * (obj.VoltageScale) / obj.ADC_SCALAR;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    <span class="keyword">methods</span>
+        <span class="keyword">function</span> set.Address(obj, value)
+            <span class="keyword">if</span> isnumeric(value)
+                validateattributes(value, {<span class="string">'numeric'</span>}, <span class="keyword">...</span>
+                    {<span class="string">'scalar'</span>, <span class="string">'nonnegative'</span>}, <span class="string">''</span>, <span class="string">'Address'</span>);
+            <span class="keyword">else</span>
+                validateattributes(value, {<span class="string">'char'</span>}, <span class="keyword">...</span>
+                    {<span class="string">'nonempty'</span>}, <span class="string">''</span>, <span class="string">'Address'</span>);
+                value = obj.hex2dec(value);
+            <span class="keyword">end</span>
+            <span class="keyword">if</span> (value &lt; obj.hex2dec(<span class="string">'0x48'</span>)) || (value &gt; obj.hex2dec(<span class="string">'0x51'</span>))
+                error(<span class="string">'raspi:ads1115:InvalidI2CAddress'</span>, <span class="keyword">...</span>
+                    <span class="string">'Invalid I2C address. I2C address must be one of the following: 0x48, 0x49, 0x50, 0x51'</span>);
+            <span class="keyword">end</span>
+            obj.Address = value;
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> set.SamplesPerSecond(obj, value)
+            validateattributes(value, {<span class="string">'numeric'</span>}, <span class="keyword">...</span>
+                {<span class="string">'scalar'</span>, <span class="string">'nonnan'</span>, <span class="string">'finite'</span>}, <span class="string">''</span>, <span class="string">'SamplesPerSecond'</span>);
+            <span class="keyword">if</span> ~ismember(value, obj.AvailableSamplesPerSecond)
+                error(<span class="string">'raspi:ads1115:InvalidSamplesPerSecond'</span>, <span class="keyword">...</span>
+                    <span class="string">'SamplesPerSecond must be one of the following: %d'</span>, <span class="keyword">...</span>
+                    obj.AvailableSamplesPerSecond);
+            <span class="keyword">end</span>
+            obj.SamplesPerSecond = value;
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> set.VoltageScale(obj, value)
+            validateattributes(value, {<span class="string">'numeric'</span>}, <span class="keyword">...</span>
+                {<span class="string">'scalar'</span>, <span class="string">'nonnan'</span>, <span class="string">'finite'</span>}, <span class="string">''</span>, <span class="string">'VoltageScale'</span>);
+            <span class="keyword">if</span> ~ismember(value, obj.AvailableVoltageScale)
+                error(<span class="string">'raspi:ads1115:InvalidVoltageScale'</span>, <span class="keyword">...</span>
+                    <span class="string">'VoltageScale must be one of the following: %d'</span>, <span class="keyword">...</span>
+                    obj.AvailableVoltageScale);
+            <span class="keyword">end</span>
+            obj.VoltageScale = value;
+            <span class="keyword">switch</span> obj.VoltageScale
+                <span class="keyword">case</span> 6.144,
+                    obj.PGAbits = 0; <span class="comment">%#ok&lt;*MCSUP&gt;</span>
+                <span class="keyword">case</span> 4.096,
+                    obj.PGAbits = 1;
+                <span class="keyword">case</span> 2.048,
+                    obj.PGAbits = 2;
+                <span class="keyword">case</span> 1.024,
+                    obj.PGAbits = 3;
+                <span class="keyword">case</span> 0.512,
+                    obj.PGAbits = 4;
+                <span class="keyword">case</span> 0.256
+                    obj.PGAbits = 5;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> set.OperatingMode(obj, value)
+            value = validatestring(value, obj.AvailableOperatingMode);
+            obj.OperatingMode = value;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    <span class="keyword">methods</span> (Access = protected)
+        <span class="keyword">function</span> displayScalarObject(obj)
+            header = getHeader(obj);
+            disp(header);
+
+            <span class="comment">% Display main options</span>
+            fprintf(<span class="string">'                Address: %-15s\n'</span>, [<span class="string">'0x'</span> dec2hex(obj.Address)]);
+            fprintf(<span class="string">'          OperatingMode: %-15s (''single-shot'' or ''continuous'')\n'</span>, <span class="keyword">...</span>
+                obj.OperatingMode);
+            fprintf(<span class="string">'       SamplesPerSecond: %-15d (8, 16, 32, 64, 128, 250, 475, or 860)\n'</span>, <span class="keyword">...</span>
+                obj.SamplesPerSecond);
+            fprintf(<span class="string">'           VoltageScale: %-15.3f (6.144, 4.096, 2.048, 1.024, 0.512, or 0.256)\n'</span>, <span class="keyword">...</span>
+                obj.VoltageScale);
+            fprintf(<span class="string">'\n'</span>);
+
+            <span class="comment">% Allow for the possibility of a footer.</span>
+            footer = getFooter(obj);
+            <span class="keyword">if</span> ~isempty(footer)
+                disp(footer);
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> configReg = getConfigReg(obj, AINp, AINn)
+            <span class="comment">% Disable comparator</span>
+            configReg = bitshift(bin2dec(<span class="string">'11'</span>), obj.CONFIG_COMP_QUE_SHIFT);
+
+            <span class="comment">% Set samples per second bits DR[2:0]</span>
+            <span class="keyword">switch</span> obj.SamplesPerSecond
+                <span class="keyword">case</span> 8
+                    DRbits = 0;
+                <span class="keyword">case</span> 16
+                    DRbits = 1;
+                <span class="keyword">case</span> 32
+                    DRbits = 2;
+                <span class="keyword">case</span> 64
+                    DRbits = 3;
+                <span class="keyword">case</span> 128
+                    DRbits = 4;
+                <span class="keyword">case</span> 250
+                    DRbits = 5;
+                <span class="keyword">case</span> 475
+                    DRbits = 6;
+                <span class="keyword">case</span> 860
+                    DRbits = 7;
+            <span class="keyword">end</span>
+            configReg = bitor(configReg, bitshift(DRbits, obj.CONFIG_DR_SHIFT));
+
+            <span class="comment">% Set operating mode bits MODE[8]</span>
+            <span class="keyword">if</span> isequal(obj.OperatingMode, <span class="string">'single-shot'</span>)
+                MODEbits = 1;
+                configReg = bitor(configReg, bitshift(MODEbits, obj.CONFIG_MODE_SHIFT));
+                configReg = bitor(configReg, bitshift(1, obj.CONFIG_OS_SHIFT));
+            <span class="keyword">end</span>
+
+            <span class="comment">% Set PGA bits PGA[2:0]</span>
+            configReg = bitor(configReg, bitshift(obj.PGAbits, obj.CONFIG_PGA_SHIFT));
+
+            <span class="comment">% Set MUX bits MUX[2:0]</span>
+            <span class="keyword">if</span> AINn == -1
+                <span class="keyword">switch</span> AINp
+                    <span class="keyword">case</span> 0,
+                        MUXbits = bin2dec(<span class="string">'100'</span>);
+                    <span class="keyword">case</span> 1,
+                        MUXbits = bin2dec(<span class="string">'101'</span>);
+                    <span class="keyword">case</span> 2,
+                        MUXbits = bin2dec(<span class="string">'110'</span>);
+                    <span class="keyword">case</span> 3,
+                        MUXbits = bin2dec(<span class="string">'111'</span>);
+                <span class="keyword">end</span>
+            <span class="keyword">else</span>
+                <span class="keyword">if</span> (AINp == 0) &amp;&amp; (AINn == 1)
+                    MUXbits = 0;
+                <span class="keyword">elseif</span> (AINp == 0) &amp;&amp; (AINn == 3)
+                    MUXbits = 1;
+                <span class="keyword">elseif</span> (AINp == 1) &amp;&amp; (AINn == 3)
+                    MUXbits = 2;
+                <span class="keyword">elseif</span> (AINp == 2) &amp;&amp; (AINn == 3)
+                    MUXbits = 3;
+                <span class="keyword">else</span>
+                    error(<span class="string">'raspi:ads1115:InvalidAIN'</span>, <span class="keyword">...</span>
+                        [<span class="string">'Invalid (AINp, AINn) pair for differential voltage measurement. '</span>, <span class="keyword">...</span>
+                        <span class="string">'Supported (AINp, AINn) values are: (0, 1), (0, 3), (1, 3), (2, 3).'</span>]);
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            configReg = bitor(configReg, bitshift(MUXbits, obj.CONFIG_MUX_SHIFT));
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    <span class="keyword">methods</span> (Access = private)
+        <span class="keyword">function</span> configureDevice(obj)
+            obj.i2cObj.writeRegister(obj.CONFIG_REG, <span class="keyword">...</span>
+                swapbytes(uint16(obj.ConfigReg)), <span class="string">'uint16'</span>);
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> reg = readConfigReg(obj)
+            reg = swapbytes(readRegister(obj.i2cObj, obj.CONFIG_REG, <span class="string">'uint16'</span>));
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    <span class="keyword">methods</span> (Static)
+        <span class="keyword">function</span> decvalue = hex2dec(hexvalue)
+            decvalue = hex2dec(regexprep(hexvalue, <span class="string">'0x'</span>, <span class="string">''</span>));
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> hexvalue = dec2hex(decvalue)
+            hexvalue = sprintf(<span class="string">'0x%02s'</span>, dec2hex(decvalue));
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput error">Not enough input arguments.
+
+Error in ads1115 (line 113)
+            obj.i2cObj = i2cdev(raspiObj, obj.Address);
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2019b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+classdef ads1115 < handle & matlab.mixin.CustomDisplay
+    %ADS1115 Analog-to-Digital converter.
+    %
+    % adc = ads1115(rpi, bus) creates a ADS1115 ADC object attached to the
+    % specified I2C bus. The first parameter, rpi, is a raspi object. The
+    % I2C address of the ADS1115 ADC defaults to '0x48'.
+    %
+    % adc = ads1115(rpi, bus, address) creates a ADS1115 ADC object
+    % attached to the specified I2C bus and I2C address. Use this form if
+    % you used the ADDR pin to change the I2C address of the ADS1115 from
+    % the default '0x48' to something else.
+    %
+    % readVoltage(adc, AINp) reads the single-ended voltage measurement
+    % from AINp input port. 
+    %
+    % readVoltage(adc, AINp, AINn) reads the differential voltage
+    % measurement between AINp and AINn input ports.
+    %
+    % The OperatingMode property of the ADS1115 ADC object determines power
+    % consumption, speed and accuracy. The default OperatingMode is
+    % 'single-shot' meaning that the ADS1115 performs a single analog to
+    % digital conversion upon request and goes to power save mode. In
+    % continuous mode, the device performs continuous conversions.
+    %
+    % The SamplesPerSecond property sets the conversion rate. 
+    %
+    % The VoltageScale property of the ADS1115 ADC object determines the
+    % setting of the Programmable Gain Amplifier (PGA) value applied before
+    % analog to digital conversion. See table below to correlate the
+    % input voltage scale with the PGA value:
+    %
+    % VoltageScale | PGA Value 
+    % REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-
+    %    6.144  |    2/3
+    %    4.096  |    1
+    %    2.048  |    2  
+    %    1.024  |    4   
+    %    0.512  |    8   
+    %    0.256  |    16   
+    %
+    % <a href="http://www.ti.com/lit/gpn/ads1115">Device Datasheet</a>
+    %
+    % NOTE: Do not apply voltages excedding VDD+0.3V to any input pin.
+    
+    % Copyright 2014 The MathWorks, Inc.
+    
+    properties (SetAccess = private, GetAccess = public)
+        Address = bin2dec('1001000') % Default address 0x48
+    end
+    
+    properties (Access = public)
+        OperatingMode
+        VoltageScale    
+        SamplesPerSecond
+    end
+    
+    properties (Access = private)
+        i2cObj
+        PGAbits
+        AINp
+        AINn
+        NumInputs = 4
+        ConfigReg
+    end
+    
+    properties (Constant, Hidden)
+        AvailableSamplesPerSecond = [8, 16, 32, 64, 128, 250, 475, 860]
+        AvailableVoltageScale = [6.144, 4.096, 2.048, 1.024, 0.512, 0.256]
+        AvailableOperatingMode = {'single-shot', 'continuous'}
+    end
+    
+    properties (Constant, Access = private)
+        % Register addresses
+        CONVERSION_REG = 0
+        CONFIG_REG     = 1
+        LOTHRESH_REG   = 2
+        HITHRESH_REG   = 3
+        
+        % Config register bit shifts
+        CONFIG_OS_SHIFT        = 15
+        CONFIG_MUX_SHIFT       = 12
+        CONFIG_PGA_SHIFT       = 9
+        CONFIG_MODE_SHIFT      = 8
+        CONFIG_DR_SHIFT        = 5
+        CONFIG_COMP_MODE_SHIFT = 4
+        CONFIG_COMP_POL_SHIFT  = 3
+        CONFIG_COMP_LAT_SHIFT  = 2
+        CONFIG_COMP_QUE_SHIFT  = 0
+        
+        % Full scale for ADS1115 is 4.096 volts
+        FS_VOLTAGE = 4.096
+        
+        % 16-bit ADC result needs to be scaled by this value
+        ADC_SCALAR = 2^15 - 1
+    end
+    
+    methods
+        function obj = ads1115(raspiObj, address)
+            % Set I2C address if not using default
+            if nargin > 1
+                obj.Address = address;
+            end
+            
+            % Set defaults
+            obj.SamplesPerSecond = 128;
+            obj.OperatingMode = 'single-shot';
+            obj.VoltageScale = 4.096;
+            
+            % Initialize config register value
+            obj.ConfigReg = 0;
+            
+            % Create an i2cdev object to talk to ADS1115
+            obj.i2cObj = i2cdev(raspiObj, obj.Address);
+        end
+        
+        function voltage = readVoltage(obj, AINp, AINn)
+            % voltage = readVoltage(obj, AINp) reads the single-ended input
+            % voltage value at channe AINp.
+            %
+            % voltage = readVoltage(obj, AINp, AINn) reads the input
+            % voltage value that is the difference between AINp and AINn.
+            validateattributes(AINp, {'numeric'}, ...
+                {'scalar', '>=', 0, '<=', obj.NumInputs-1}, '', 'AINp');
+            if nargin > 2
+                validateattributes(AINn, {'numeric'}, ...
+                    {'scalar', '>=', 0, '<=', obj.NumInputs-1}, '', 'AINn');
+            else
+                AINn = -1;
+            end
+ 
+            % Configure ADC and read requested conversion value
+            configReg = getConfigReg(obj, AINp, AINn);
+            if isequal(obj.OperatingMode, 'single-shot') || ...
+                    (configReg ~= obj.ConfigReg)
+                obj.ConfigReg = configReg;
+                configureDevice(obj);
+            end
+            
+            % Each I2C transaction with raspi object takes about 5ms. If
+            % conversion time is greater than this we must wait
+            if isequal(obj.OperatingMode, 'single-shot') && ...
+                    (1/obj.SamplesPerSecond > 0.005)
+                pause(1/obj.SamplesPerSecond);
+            end
+            
+            % Read raw ADC conversion value and convert to voltage
+            data = readRegister(obj.i2cObj, obj.CONVERSION_REG, 'int16'); 
+            voltage = double(swapbytes(data)) * (obj.VoltageScale) / obj.ADC_SCALAR;
+        end
+    end
+    
+    methods
+        function set.Address(obj, value)
+            if isnumeric(value)
+                validateattributes(value, {'numeric'}, ...
+                    {'scalar', 'nonnegative'}, '', 'Address');
+            else
+                validateattributes(value, {'char'}, ...
+                    {'nonempty'}, '', 'Address');
+                value = obj.hex2dec(value);
+            end
+            if (value < obj.hex2dec('0x48')) || (value > obj.hex2dec('0x51'))
+                error('raspi:ads1115:InvalidI2CAddress', ...
+                    'Invalid I2C address. I2C address must be one of the following: 0x48, 0x49, 0x50, 0x51');
+            end
+            obj.Address = value;
+        end
+        
+        function set.SamplesPerSecond(obj, value)
+            validateattributes(value, {'numeric'}, ...
+                {'scalar', 'nonnan', 'finite'}, '', 'SamplesPerSecond');
+            if ~ismember(value, obj.AvailableSamplesPerSecond)
+                error('raspi:ads1115:InvalidSamplesPerSecond', ...
+                    'SamplesPerSecond must be one of the following: %d', ...
+                    obj.AvailableSamplesPerSecond);
+            end
+            obj.SamplesPerSecond = value;
+        end
+        
+        function set.VoltageScale(obj, value)
+            validateattributes(value, {'numeric'}, ...
+                {'scalar', 'nonnan', 'finite'}, '', 'VoltageScale');
+            if ~ismember(value, obj.AvailableVoltageScale)
+                error('raspi:ads1115:InvalidVoltageScale', ...
+                    'VoltageScale must be one of the following: %d', ...
+                    obj.AvailableVoltageScale);
+            end
+            obj.VoltageScale = value;
+            switch obj.VoltageScale
+                case 6.144, 
+                    obj.PGAbits = 0; %#ok<*MCSUP>
+                case 4.096, 
+                    obj.PGAbits = 1; 
+                case 2.048, 
+                    obj.PGAbits = 2;
+                case 1.024, 
+                    obj.PGAbits = 3;
+                case 0.512, 
+                    obj.PGAbits = 4;
+                case 0.256
+                    obj.PGAbits = 5;
+            end
+        end
+        
+        function set.OperatingMode(obj, value)
+            value = validatestring(value, obj.AvailableOperatingMode);
+            obj.OperatingMode = value;
+        end
+    end
+    
+    methods (Access = protected)
+        function displayScalarObject(obj)
+            header = getHeader(obj);
+            disp(header);
+            
+            % Display main options
+            fprintf('                Address: %-15s\n', ['0x' dec2hex(obj.Address)]);
+            fprintf('          OperatingMode: %-15s (''single-shot'' or ''continuous'')\n', ...
+                obj.OperatingMode);
+            fprintf('       SamplesPerSecond: %-15d (8, 16, 32, 64, 128, 250, 475, or 860)\n', ...
+                obj.SamplesPerSecond);
+            fprintf('           VoltageScale: %-15.3f (6.144, 4.096, 2.048, 1.024, 0.512, or 0.256)\n', ...
+                obj.VoltageScale);
+            fprintf('\n');
+            
+            % Allow for the possibility of a footer.
+            footer = getFooter(obj);
+            if ~isempty(footer)
+                disp(footer);
+            end
+        end
+        
+        function configReg = getConfigReg(obj, AINp, AINn)
+            % Disable comparator
+            configReg = bitshift(bin2dec('11'), obj.CONFIG_COMP_QUE_SHIFT);
+            
+            % Set samples per second bits DR[2:0]
+            switch obj.SamplesPerSecond
+                case 8
+                    DRbits = 0;
+                case 16
+                    DRbits = 1;
+                case 32
+                    DRbits = 2;
+                case 64
+                    DRbits = 3;
+                case 128
+                    DRbits = 4;
+                case 250
+                    DRbits = 5;
+                case 475 
+                    DRbits = 6;
+                case 860
+                    DRbits = 7;
+            end
+            configReg = bitor(configReg, bitshift(DRbits, obj.CONFIG_DR_SHIFT));
+            
+            % Set operating mode bits MODE[8]
+            if isequal(obj.OperatingMode, 'single-shot')
+                MODEbits = 1;
+                configReg = bitor(configReg, bitshift(MODEbits, obj.CONFIG_MODE_SHIFT));
+                configReg = bitor(configReg, bitshift(1, obj.CONFIG_OS_SHIFT));
+            end
+            
+            % Set PGA bits PGA[2:0]
+            configReg = bitor(configReg, bitshift(obj.PGAbits, obj.CONFIG_PGA_SHIFT));
+            
+            % Set MUX bits MUX[2:0]
+            if AINn == -1
+                switch AINp
+                    case 0,
+                        MUXbits = bin2dec('100');
+                    case 1,
+                        MUXbits = bin2dec('101');
+                    case 2,
+                        MUXbits = bin2dec('110');
+                    case 3,
+                        MUXbits = bin2dec('111');
+                end
+            else
+                if (AINp == 0) && (AINn == 1)
+                    MUXbits = 0;
+                elseif (AINp == 0) && (AINn == 3)
+                    MUXbits = 1;
+                elseif (AINp == 1) && (AINn == 3)
+                    MUXbits = 2;
+                elseif (AINp == 2) && (AINn == 3)
+                    MUXbits = 3;
+                else
+                    error('raspi:ads1115:InvalidAIN', ...
+                        ['Invalid (AINp, AINn) pair for differential voltage measurement. ', ...
+                        'Supported (AINp, AINn) values are: (0, 1), (0, 3), (1, 3), (2, 3).']);
+                end
+            end
+            configReg = bitor(configReg, bitshift(MUXbits, obj.CONFIG_MUX_SHIFT));   
+        end
+    end
+    
+    methods (Access = private)
+        function configureDevice(obj)
+            obj.i2cObj.writeRegister(obj.CONFIG_REG, ...
+                swapbytes(uint16(obj.ConfigReg)), 'uint16');
+        end
+        
+        function reg = readConfigReg(obj)
+            reg = swapbytes(readRegister(obj.i2cObj, obj.CONFIG_REG, 'uint16'));
+        end
+    end
+    
+    methods (Static)
+        function decvalue = hex2dec(hexvalue)
+            decvalue = hex2dec(regexprep(hexvalue, '0x', ''));
+        end
+        
+        function hexvalue = dec2hex(decvalue)
+            hexvalue = sprintf('0x%02s', dec2hex(decvalue));
+        end
+    end
+end
+##### SOURCE END #####
+--></body></html>
