@@ -14,6 +14,8 @@ Adafruit_ADS1115 ads1(0x48);
 Adafruit_ADS1115 ads2(0x49);
 NAU7802 myScale;
 
+HEX addressArray[] = {0x67,0x48,0x49};
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -21,10 +23,7 @@ void setup() {
   //Initialize each sensor, make sure they are wired
   Wire.begin();
   
-  ads1_Setup();
-  ads2_Setup();
-  myScale_Setup();
-  mcp_Setup();
+  
   
   
   
@@ -43,32 +42,18 @@ void loop() {
   // put your main code here, to run repeatedly:
   
   recvOneChar();
+
+  wireTestAndSetup();
+
+  setOnoff();
   
-  if (newData == true){
-    setOnoff();
+  if (onoff){
+    dataArray[0] = 1.1; //Sensor readings go here
+    dataArray[1] = 2.2;
+    dataArray[2] = 3.3;
+    sendArr();
     
     }
-  
-  if (onoff == true){
-    Serial.print("Radiometer mV: "); Serial.println(ads1.readADC_Differential_0_1() * ads1_multiplier);
-    Serial.print("Thermistor 1 mV: "); Serial.println(ads2.readADC_SingleEnded(0));
-    Serial.print("Thermistor 2 mV: "); Serial.println(ads2.readADC_SingleEnded(1));
-    Serial.print("Scale: "); Serial.println(myScale.getReading());
-    Serial.print("Thermocouple 1: "); Serial.println(mcp.readThermocouple());
-    
-    
-    
-    
-    
-    
-    
-    }
-  
-  
-  
-  //recvOneChar();
-  //recvFullLine();
-  //AHAH();
   
   Reset();
  
@@ -143,15 +128,46 @@ void mcp_Setup(){
 void setOnoff(){
   if(newData == true && receivedChar == 'B'){
     onoff = true;
+    Reset();
     }
   else if(newData == true && receivedChar == 'E'){
     onoff = false;
+    Reset();
     }
   }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void wireTestAndSetup(){
+  if(newData == true && receivedChar == 'T'){
+    onoff = true;
+    Reset();
+    }  
+  
+  for(int i=0; i<sizeof(dataArray) / sizeof(dataArray[0]); i++){
+    Wire.beginTransmission (addressArray[i]);
+    if (Wire.endTransmission () == 0){
+      Serial.print ("Found address: ");
+      Serial.print (addressArray[i], DEC);
+      Serial.print (" (0x");
+      Serial.print (addressArray[i], HEX);
+      Serial.println (")");      
+    }
+    else{
+      Serial.print ("Did not find: ");
+      Serial.print (addressArray[i], DEC);
+      Serial.print (" (0x");
+      Serial.print (addressArray[i], HEX);
+      Serial.println (")");
+    }    
+  }
 
+  //Setup all the sensors
+  ads1_Setup();
+  ads2_Setup();
+  myScale_Setup();
+  mcp_Setup();
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -176,6 +192,30 @@ void AHAH(){
     Serial.println("5 AHAHAH");
     delay(100);  
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void sendArr(){
+  if(newData == true && receivedChar == 'B'){
+    onoff = true;
+    Reset();
+    }
+  else if(newData == true && receivedChar == 'E'){
+    onoff = false;
+    Reset();
+    }
+    
+  if(onoff){
+    for(int i=0; i<sizeof(dataArray) / sizeof(dataArray[0]); i++){
+      //Serial.print("<");
+      //Serial.print(i);
+      //Serial.print(",");
+      Serial.print(dataArray[i]);
+      Serial.print("|");
+   }
+   Serial.print("\n");
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
