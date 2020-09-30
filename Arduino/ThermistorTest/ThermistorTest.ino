@@ -102,9 +102,9 @@ float getThermistor(int num){
   float ln = log(resistance / thermistor_25); // Log of the ratio of thermistor resistance and resistance at 25 deg. C
 
   //Triple check this 
-  float kelvin = 1 / (0.0033540170 + (0.00025617244 * ln) + (0.0000021400943 * ln * ln) + (-0.000000072405219 * ln * ln * ln)); // Using the Steinhart-Hart Thermistor Equation to calculate temp in K
+  float temp = 1 / (0.04637506908234226 + (0.02438261567332931 * ln) + (0.003937342290066299 * ln * ln)); // Using the Steinhart-Hart Thermistor Equation to calculate temp in K
 
-  float temp = kelvin - 273.15; // Converting Kelvin to Celcuis    
+  //float temp = kelvin - 273.15; // Converting Kelvin to Celcuis    
   
   return temp;
 }

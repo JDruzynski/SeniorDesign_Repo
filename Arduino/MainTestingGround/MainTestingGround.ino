@@ -60,6 +60,7 @@ void loop() {
   delay(1000);
  }
 
+//Setup Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //This ADS1115 will be use in differential mode, for the radiometer
 // The ADC input range (or gain) can be changed via the following
@@ -122,6 +123,67 @@ void mcp_Setup(){
   mcp.setFilterCoefficient(3);
   mcp.enable(true);
   }
+
+//Thermistor Function(s)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float getThermistor(int num){
+  //input 1 or 2 for thermistor 1 or 2
+  int thermistor_25 = 5000; //Change later
+  float refCurrent = 0.0001; //Change later
+  float Voltage; //Change later
+  float VCC = 5.0; //Change Later
+  int16_t adc; // we read from the ADC, we have a sixteen bit integer as a result
+  float a = 0.04637506908234226 ;
+  float b = 0.02438261567332931 ;
+  float c = 0.003937342290066299 ;
+
+  if(num == 1){
+    //Reads 1st thermistor
+    adc = ads2.readADC_SingleEnded(0); 
+  }
+  if(num == 2){
+    //Reads 2nd thermistor
+    adc = ads2.readADC_SingleEnded(1); 
+  }
+
+  Voltage = adc * ads2_multiplier; //Look more into this *****
+
+  float resistance = (Voltage / refCurrent); // Using Ohm's Law to calculate resistance of thermistor
+  
+  float ln = log(resistance / thermistor_25); // Log of the ratio of thermistor resistance and resistance at 25 deg. C
+
+  //Triple check this 
+  float temp = 1 / (a + (b * ln) + (c * pow(ln,2))); // Using the Steinhart-Hart Thermistor Equation to calculate temp in K
+
+  //float temp = kelvin - 273.15; // Converting Kelvin to Celcuis    
+  
+  return temp;
+}
+
+//Radiometer Function(s)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float getRadiometer(){
+  float VCC = 5.0; //Change Later
+  //Will update these values later
+  float cosTh = 1.0;
+  float a = 1.0 ;
+  float b = 1.0 ;
+  float c = 1.0 ;
+  float n = 1.0 ;  
+
+  float T_opt = getThermistor(1);
+  float T_d = getThermistor(2);
+
+  int16_t  diffV = ads1.readADC_Differential_0_1();  
+
+  float Voltage = diffV * ads1_multiplier; //Look more into this *****
+
+  float L = (a*Voltage - b*pow(T_opt,n) + c*pow(T_d,n)) / cosTh   
+  
+  return L;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
