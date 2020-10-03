@@ -16,6 +16,7 @@ Adafruit_ADS1115 ads1(0x48);
 Adafruit_ADS1115 ads2(0x49);
 NAU7802 myScale;
 
+
 HEX addressArray[] = {0x67,0x48,0x49,0x77,0x2A};
 String deviceNameArray[] = {"Thermocoupl 1","ADC 1","ADC 2","Pressure Sensor","Scale"};
 
@@ -25,9 +26,6 @@ void setup() {
   
   //Initialize each sensor, make sure they are wired
   Wire.begin();
-  
-  
-  
   
   
   
