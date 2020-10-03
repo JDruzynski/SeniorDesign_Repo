@@ -8,13 +8,16 @@
 #define I2C_ADDRESS_MCP9600 (0x67) //
 #define I2C_ADDRESS_ADS1115_1 (0x48)
 #define I2C_ADDRESS_ADS1115_2 (0x49)
+#define I2C_ADDRESS_Pressure (0x77)
+#define I2C_ADDRESS_Scale (0x2A)
 
 Adafruit_MCP9600 mcp;
 Adafruit_ADS1115 ads1(0x48);
 Adafruit_ADS1115 ads2(0x49);
 NAU7802 myScale;
 
-HEX addressArray[] = {0x67,0x48,0x49};
+HEX addressArray[] = {0x67,0x48,0x49,0x77,0x2A};
+String deviceNameArray[] = {"Thermocoupl 1","ADC 1","ADC 2","Pressure Sensor","Scale"};
 
 void setup() {
   // put your setup code here, to run once:
@@ -34,7 +37,6 @@ void setup() {
 bool onoff = false, newData = false;
 char receivedChar;
 String readString;
-float ads1_multiplier;
 
 
 
@@ -84,7 +86,7 @@ void ads1_Setup(){
   Serial.println("ADS 1 detected!");*/
   ads1.begin();
   ads1.setGain(GAIN_EIGHT);
-  ads1_multiplier = 0.015625F; //To mV
+  float ads1_multiplier = 0.015625F; //To mV
   }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,27 +105,22 @@ void ads2_Setup(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void myScale_Setup(){
-  if (!myScale.begin()){
-    Serial.println("Scale not detected. Please check wiring. Freezing...");
-    while (1);
-    }
-  Serial.println("Scale detected!");
+  myScale.begin();
   }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void mcp_Setup(){
-  if (!mcp.begin(I2C_ADDRESS_MCP9600)) {
-    Serial.println("MCP9600 not detected. Please check wiring. Freezing...");
-    while (1);
-    }
-  Serial.println("MCP9600 detected!");
-  
   mcp.setThermocoupleType(MCP9600_TYPE_K);
   mcp.setFilterCoefficient(3);
   mcp.enable(true);
   }
+  
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void pressure_Setup(){
+  }
+  
 //Thermistor Function(s)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -198,29 +195,28 @@ void setOnoff(){
     }
   }
 
+//Wiring Test Function
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wireTestAndSetup(){
+  //This function checks which sensors are connected. 
   if(newData == true && receivedChar == 'T'){
     onoff = true;
     Reset();
     }  
   
-  for(int i=0; i<sizeof(dataArray) / sizeof(dataArray[0]); i++){
+  for(int i=0; i<sizeof(addressArray) / sizeof(addressArray[0]); i++){
     Wire.beginTransmission (addressArray[i]);
     if (Wire.endTransmission () == 0){
-      Serial.print ("Found address: ");
-      Serial.print (addressArray[i], DEC);
-      Serial.print (" (0x");
-      Serial.print (addressArray[i], HEX);
+      Serial.print ("Found address ");
+      Serial.print (deviceNameArray[i]);//prints the name of the sensors found
+      Serial.print (" at: (0x");
+      Serial.print (addressArray[i], HEX); //prints the name of the sensors found
       Serial.println (")");      
     }
     else{
       Serial.print ("Did not find: ");
-      Serial.print (addressArray[i], DEC);
-      Serial.print (" (0x");
-      Serial.print (addressArray[i], HEX);
-      Serial.println (")");
+      Serial.println (deviceNameArray[i]);
     }    
   }
 
@@ -229,6 +225,7 @@ void wireTestAndSetup(){
   ads2_Setup();
   myScale_Setup();
   mcp_Setup();
+  pressure_Setup();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
