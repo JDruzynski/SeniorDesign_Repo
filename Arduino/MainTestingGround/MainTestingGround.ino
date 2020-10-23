@@ -16,6 +16,17 @@ Adafruit_ADS1115 ads1 (0x48);
 Adafruit_ADS1115 ads2 (0x49);
 NAU7802 myScale;
 
+//EEPROM locations to store 4-byte variables
+#define LOCATION_CALIBRATION_FACTOR 0 //Float, requires 4 bytes of EEPROM
+#define LOCATION_ZERO_OFFSET 10 //Must be more than 4 away from previous spot. Long, requires 4 bytes of EEPROM
+
+bool settingsDetected = false; //Used to prompt user to calibrate their scale
+
+//Create an array to take average of weights. This helps smooth out jitter.
+#define AVG_SIZE 50
+float avgWeights[AVG_SIZE];
+byte avgWeightSpot = 0;
+
 #define RELAY_ON 1      // Define relay on pin state
 #define RELAY_OFF  0    // Define relay off pin state 
 #define Relay  13       // Arduino pin where the relay connects
@@ -67,6 +78,11 @@ void setup() {
   digitalWrite(Relay, RELAY_OFF);      // initialise the relay to off
   pinMode(Relay, OUTPUT); 
 
+  readSystemSettings(); //Load zeroOffset and calibrationFactor from EEPROM
+
+  myScale.setSampleRate(NAU7802_SPS_320); //Increase to max sample rate
+  myScale.calibrateAFE(); //Re-cal analog front end when we change gain, sample rate, or channel 
+
   //---set pin direction
   pinMode(ENABLE,OUTPUT);
   pinMode(DIRA,OUTPUT);
@@ -87,8 +103,9 @@ void loop() {
   recvOneChar();
 
   wireTestAndSetup();
-
+  
   setOnoff();
+  myScale_Tare();
   
   if (onoff){
     dataArray[0] = 1.1; //Sensor readings go here
@@ -158,10 +175,8 @@ void myScale_Setup(){
 
 void myScale_Tare(){
   if(newData == true && receivedChar == 't'){
-    
-
-
-    
+    myScale.calculateZeroOffset();
+        
     Reset();
     }  
   }
@@ -246,6 +261,27 @@ float getRadiometer(){
   float L = (a*Voltage - b*pow(T_opt,n) + c*pow(T_d,n)) / cosTh ;  
   
   return L;
+}
+
+//Scale Function(s)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float getScale(){
+  long currentReading = myScale.getReading();
+  float currentWeight = myScale.getWeight();
+
+  avgWeights[avgWeightSpot++] = currentWeight;
+  if(avgWeightSpot == AVG_SIZE) {
+    avgWeightSpot = 0;
+    }
+
+  float avgWeight = 0;
+    for (int x = 0 ; x < AVG_SIZE ; x++){
+    avgWeight += avgWeights[x];
+    avgWeight /= AVG_SIZE;
+    }
+  
+  return avgWeight;
 }
 
 //Relay Function(s)
@@ -418,4 +454,48 @@ void Reset() {
  if(readString.length()>0){
    readString = "";
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Record the current system settings to EEPROM
+void recordSystemSettings(void)
+{
+  //Get various values from the library and commit them to NVM
+  EEPROM.put(LOCATION_CALIBRATION_FACTOR, myScale.getCalibrationFactor());
+  EEPROM.put(LOCATION_ZERO_OFFSET, myScale.getZeroOffset());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Reads the current system settings from EEPROM
+//If anything looks weird, reset setting to default value
+void readSystemSettings(void)
+{
+  float settingCalibrationFactor; //Value used to convert the load cell reading to lbs or kg
+  long settingZeroOffset; //Zero value that is found when scale is tared
+
+  //Look up the calibration factor
+  EEPROM.get(LOCATION_CALIBRATION_FACTOR, settingCalibrationFactor);
+  if (settingCalibrationFactor == 0xFFFFFFFF)
+  {
+    settingCalibrationFactor = 0; //Default to 0
+    EEPROM.put(LOCATION_CALIBRATION_FACTOR, settingCalibrationFactor);
+  }
+
+  //Look up the zero tare point
+  EEPROM.get(LOCATION_ZERO_OFFSET, settingZeroOffset);
+  if (settingZeroOffset == 0xFFFFFFFF)
+  {
+    settingZeroOffset = 1000L; //Default to 1000 so we don't get inf
+    EEPROM.put(LOCATION_ZERO_OFFSET, settingZeroOffset);
+  }
+
+  //Pass these values to the library
+  myScale.setCalibrationFactor(settingCalibrationFactor);
+  myScale.setZeroOffset(settingZeroOffset);
+
+  settingsDetected = true; //Assume for the moment that there are good cal values
+  if (settingCalibrationFactor < 0.1 || settingZeroOffset == 1000)
+    settingsDetected = false; //Defaults detected. Prompt user to cal scale.
 }
