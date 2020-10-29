@@ -9,11 +9,11 @@ Exercise the motor using the L293D chip and Serial commands
 
 //These are the default pins we will be using for the motor, 
 //but we may change these later
-#define ENABLE 5
-#define DIRA 3
-#define DIRB 4
+#define ENABLE 4
+#define DIRA 5
+#define DIRB 3
 #define SPEED 255 // Motor speed (0-255)
-#define MOTOR_RT 500// How long the motor runs, ms
+#define MOTOR_RT 100// How long the motor runs, ms
 
 void setup() {
   // put your setup code here, to run once:
