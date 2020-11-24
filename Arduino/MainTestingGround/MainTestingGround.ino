@@ -1,16 +1,55 @@
 #include <Wire.h>;
+#include <EEPROM.h>;
 #include <Adafruit_ADS1015.h>;
 #include "SparkFun_Qwiic_Scale_NAU7802_Arduino_Library.h";
 #include <Adafruit_I2CDevice.h>;
 #include <Adafruit_I2CRegister.h>;
 #include "Adafruit_MCP9600.h";
 
-#define I2C_ADDRESS_MCP9600 (0x67); //
-#define I2C_ADDRESS_ADS1115_1 (0x48);
-#define I2C_ADDRESS_ADS1115_2 (0x49);
-#define I2C_ADDRESS_Pressure (0x77);
-#define I2C_ADDRESS_Scale (0x2A);
+#define I2C_ADDRESS_MCP9600 0x67 //
+#define I2C_ADDRESS_ADS1115_1 0x48
+#define I2C_ADDRESS_ADS1115_2 0x49
+#define PSEN_ADDRESS 0x77
+#define I2C_ADDRESS_Scale 0x2A
 
+//Pressure sensor setup
+#define CMD_RESET 0x1E // ADC reset command
+#define CMD_ADC_READ 0x00 // ADC read command
+#define CMD_ADC_CONV 0x40 // ADC conversion command
+#define CMD_ADC_D1 0x00 // ADC D1 conversion
+#define CMD_ADC_D2 0x10 // ADC D2 conversion
+#define CMD_ADC_256 0x00 // ADC OSR=256
+#define CMD_ADC_512 0x02 // ADC OSR=512
+#define CMD_ADC_1024 0x04 // ADC OSR=1024
+#define CMD_ADC_2048 0x06 // ADC OSR=2048
+#define CMD_ADC_4096 0x08 // ADC OSR=4096
+#define CMD_PROM_RD 0xA0 // Prom read command
+
+float Q[7] = {9, 11, 9, 15, 15, 16 ,16};
+uint32_t D1, D2;
+float P,TOP, BOT;
+
+struct PSenReadings {
+   float T;
+   float P;
+};
+
+uint16_t C[8];
+struct PSenProm {
+   float C0;
+   float C1;
+   float C2;
+   float C3;
+   float C4;
+   float C5;
+   float C6;
+   float A0;
+   float A1;
+   float A2;
+};
+PSenProm PPROM;
+
+//Other I2C initializations
 Adafruit_MCP9600 mcp;
 Adafruit_ADS1115 ads1 (0x48);
 Adafruit_ADS1115 ads2 (0x49);
@@ -27,6 +66,7 @@ bool settingsDetected = false; //Used to prompt user to calibrate their scale
 float avgWeights[AVG_SIZE];
 byte avgWeightSpot = 0;
 
+//Relay setup
 #define RELAY_ON 1      // Define relay on pin state
 #define RELAY_OFF  0    // Define relay off pin state 
 #define Relay  13       // Arduino pin where the relay connects
@@ -34,11 +74,12 @@ byte avgWeightSpot = 0;
 
 //These are the default pins we will be using for the motor, 
 //but we may change these later
-#define ENABLE 5
-#define DIRA 3
-#define DIRB 4
-#define SPEED 255 // Motor speed (0-255)
-#define MOTOR_RT 500// How long the motor runs, ms
+#include <Stepper.h>
+
+const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
+const int rolePerMinute = 15;         // Adjustable range of 28BYJ-48 stepper is 0~17 rpm
+
+Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11);
 
 float dataArray[3] ;
 int addressArray[] = {0x67,0x48,0x49,0x77,0x2A};
@@ -47,6 +88,7 @@ String deviceNameArray[] = {"Thermocoupl 1","ADC 1","ADC 2","Pressure Sensor","S
 float ads1_multiplier;
 float ads2_multiplier;
 
+//Spline coefficients for the thermistors
 float therm_x[] = {0.0337,  0.0384,  0.044,   0.0506,  0.0583,  0.0674,  0.0782, 0.0912, 0.1066,
      0.1252,  0.1476,  0.1748,  0.2079,  0.2484,  0.2982,  0.3599,  0.4365,  0.5324,
      0.653,   0.8056,  1. ,     1.2493,  1.5711,  1.9897,  2.5381,  3.2624,  4.2268,
@@ -68,25 +110,30 @@ float therm_c[][33] = {
   55., 60., 65., 70., 75., 80., 85., 90., 95., 100., 105., 110., 115., 120.}
   };
 
+//Spline coefficients for the pressure sensor 
+float p_x[] = {-2.53, 1.0, 5.5, 10.0, 14.6, 18.85, 23.09, 27.55, 31.52, 35.62, 40.56};
+float p_c[][10] = {{0.0    , 0.0    , 0.    ,  0.    , -0.    , 0.    ,  0.0001, -0.0001, 0.    , 0.    },
+         { 0.0002,  0.0001,  0.0    , -0.0002,  0.0003,  0.    , -0.0004, 0.0006, -0.0002, -0.0004},
+         {0.0206, 0.0218, 0.0224, 0.0217, 0.0225, 0.0241, 0.0226, 0.0238, 0.0255, 0.0229},
+         {0.038, 0.113, 0.213, 0.313, 0.413, 0.513, 0.613, 0.713, 0.813, 0.913}};
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   
   //Initialize each sensor, make sure they are wired
   Wire.begin();
-  
-  digitalWrite(Relay, RELAY_OFF);      // initialise the relay to off
-  pinMode(Relay, OUTPUT); 
 
   readSystemSettings(); //Load zeroOffset and calibrationFactor from EEPROM
 
   myScale.setSampleRate(NAU7802_SPS_320); //Increase to max sample rate
   myScale.calibrateAFE(); //Re-cal analog front end when we change gain, sample rate, or channel 
 
-  //---set pin direction
-  pinMode(ENABLE,OUTPUT);
-  pinMode(DIRA,OUTPUT);
-  pinMode(DIRB,OUTPUT);
+  
+  myStepper.setSpeed(rolePerMinute);
+  
+  digitalWrite(Relay, RELAY_OFF);      // initialise the relay to off
+  pinMode(Relay, OUTPUT); 
   
 }
 
@@ -192,10 +239,10 @@ void mcp_Setup(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void pressure_Setup(){
-
+  PPROM = readPSenProm();
   
   }
-  
+
 //Thermistor Function(s)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -204,7 +251,7 @@ float getThermistor(int num){
   int thermistor_25 = 5000; //Change later
   float refCurrent = 0.0001; //Change later
   float Voltage; //Change later
-  float VCC = 5.0; //Change Later
+  float VCC = 3.3; //Change Later
   int16_t adc; // we read from the ADC, we have a sixteen bit integer as a result
 
   if(num == 1){
@@ -218,7 +265,7 @@ float getThermistor(int num){
 
   Voltage = adc * ads2_multiplier; //Look more into this *****
 
-  float resistance = (Voltage / refCurrent); // Using Ohm's Law to calculate resistance of thermistor
+  float resistance = (-10000 * (Voltage / VCC)) / ((Voltage / VCC) - 1); // Using Ohm's Law to calculate resistance of thermistor
   
   float Rfrac = resistance / thermistor_25; // Log of the ratio of thermistor resistance and resistance at 25 deg. C
 
@@ -311,27 +358,195 @@ void runMotor(){
   // F for forward, R for reverse
   if(newData == true && receivedChar == 'F'){
     //Runs motor forward for the motor run time at the set speed
-    analogWrite(ENABLE,SPEED); //enable on
-    digitalWrite(DIRA,HIGH); //one way
-    digitalWrite(DIRB,LOW);
-    
-    delay(MOTOR_RT);
-    digitalWrite(ENABLE,LOW); //all done
+    myStepper.step(stepsPerRevolution/4);
     Reset();
     }
   
   else if(newData == true && receivedChar == 'R'){
     //Runs motor backward for the motor run time at the set speed
-    analogWrite(ENABLE,SPEED); //enable on, set at a certain speed
-    digitalWrite(DIRA,LOW); 
-    digitalWrite(DIRB,HIGH); //one way
-
-    delay(MOTOR_RT);
-    digitalWrite(ENABLE,LOW); //all done
+    myStepper.step(-stepsPerRevolution/4);
     Reset();
     }
 }
 
+//Pressure Sensor Functions
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct PSenReadings readPSen(PSenProm PPROM) {
+   struct PSenReadings Psen;
+   GetD1D2();
+
+   Psen.T = (PPROM.A0 / 3) + (PPROM.A1 * 2 * D2 / pow(2,24)) + (PPROM.A2 * 2 * pow((D2 / pow(2, 24)), 2));
+   
+   TOP = D1 + (PPROM.C0 * pow(2, Q[0])) + (PPROM.C3 * pow(2, Q[3]) * D2 / pow(2, 24)) + (PPROM.C4 * pow(2,Q[4]) * pow((D2 / pow(2, 24)), 2));
+   BOT = (PPROM.C1 * pow(2, Q[1])) + (PPROM.C5 * pow(2, Q[5]) * D2 / pow(2, 24)) + (PPROM.C6 * pow(2, Q[6]) * pow((D2 / pow(2, 24)), 2));   
+   float Y = TOP/BOT;
+   float P = (Y*(1-PPROM.C2*pow(2, Q[2])/pow(2, 24))) + PPROM.C2*pow(2, Q[2])/pow(2, 24)*pow(Y, 2);
+   Psen.P = 14.5038 * (((P-0.1)/0.8)*(12-0));
+
+   float p;
+   int len = 11;//**INPUT LENGTH OF SPLINE ARRAYS**
+   for (int i=0; i< len ; i++){
+    if (Psen.P >= p_x[i] && Psen.P < p_x[i+1]){
+      float d = p_c[0][i];
+      float ci = p_c[1][i];
+      float b = p_c[2][i];
+      float y = p_c[3][i];
+      
+      p = (d * (pow((Psen.P-p_x[i]),3))) + (ci * (pow((Psen.P-p_x[i]),2))) + (b * (Psen.P-p_x[i])) + y;
+      Psen.P = p;
+      break;
+    }
+  }
+
+   return Psen;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint16_t PSEN_CMD_PROM(int addrs){
+    
+  int16_t reading;
+  Wire.beginTransmission(PSEN_ADDRESS); // transmit to device #112
+  Wire.write(addrs);      // sets register pointer to echo #1 register (0x02)
+  Wire.endTransmission();      // stop transmitting
+
+  // step 4: request reading from sensor
+  Wire.requestFrom(PSEN_ADDRESS, 2);    // request 2 bytes from slave device #112
+
+  // step 5: receive reading from sensor
+  if(2 <= Wire.available())    // if two bytes were received
+  {
+    reading = Wire.read();  // receive high byte (overwrites previous reading)
+    reading = reading << 8;    // shift high byte to be high 8 bits
+    reading |= Wire.read(); // receive low byte as lower 8 bits
+    
+    return reading;   // print the reading
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int16_t FourteenBitConversion(int16_t Value){
+ 
+  int16_t Converted = Value;
+ 
+   if(Value > 8192){
+ 
+     Converted = ((Value - 8192 -1)^8191)*-1;
+ }
+ 
+  return Converted;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int16_t TenBitConvertion(int16_t Value){
+ 
+  int16_t Converted = Value;
+ 
+ if(Value > 512){
+ 
+  Converted = ((Value - 512 -1)^511)*-1;
+ }
+ 
+ 
+  return Converted;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct PSenProm readPSenProm() {
+   PSenProm Psen;
+
+   for (int i=0;i < 8; i++ ){
+    int val = CMD_PROM_RD+(i*2);
+    C[i] = PSEN_CMD_PROM(val);
+    
+  }
+
+  Psen.C0 = (C[1] & 0xFFFC) >> 2;
+  Psen.C0 = FourteenBitConversion(Psen.C0);
+
+  Psen.C1 = ((C[1] & 0x03) << 12) + ((C[2] & 0xFFF0) >> 4);
+  Psen.C1 = FourteenBitConversion(Psen.C1);
+
+  Psen.C2 = (((C[2] & 0xF) << 6) + (C[3] >> 10)) & 0x3FF;
+  Psen.C2 = TenBitConvertion(Psen.C2);
+
+  Psen.C3 = C[3] & 0x3FF;
+  Psen.C3 = TenBitConvertion(Psen.C3);
+
+  Psen.C4 = (C[4] >> 6) & 0x3FF;
+  Psen.C4 = TenBitConvertion(Psen.C4);
+
+  Psen.C5 =  (((C[4] & 0x3F) << 4) + (C[5] >> 12)) & 0x3FF;
+  Psen.C5 = TenBitConvertion(Psen.C5);
+
+  Psen.C6 = (C[5] >> 2) & 0x3FF;
+  Psen.C6 = TenBitConvertion(Psen.C6);
+
+  Psen.A0 = (((C[5] & 0x3) << 8) + (C[6] >> 8)) & 0x3FF;
+  Psen.A0 = TenBitConvertion(Psen.A0);
+
+  Psen.A1 = (((C[6] & 0xFF) << 2) + (C[7] >> 14)) & 0x3FF;
+  Psen.A1 = TenBitConvertion(Psen.A1);
+
+  Psen.A2 = (C[7] >> 4) & 0x3FF;
+  Psen.A2 = TenBitConvertion(Psen.A2);
+ 
+   return Psen;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void GetD1D2(){
+  D2=cmd_adc(CMD_ADC_D2+CMD_ADC_4096); // read D2
+  D1=cmd_adc(CMD_ADC_D1+CMD_ADC_4096); // read D1
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Read ADC
+uint32_t cmd_adc(int cmd){
+  uint16_t ret;
+  uint32_t reading = 0;
+  
+  Wire.beginTransmission(PSEN_ADDRESS); // transmit to device #112
+  Wire.write(CMD_ADC_CONV + cmd);      // sets register pointer to echo #1 register (0x02)
+  Wire.endTransmission();      // stop transmitting
+
+  switch(cmd & 0x0F){
+      case CMD_ADC_256 : delayMicroseconds(900); break;
+      case CMD_ADC_512 : delay(3); break;
+      case CMD_ADC_1024: delay(4); break;
+      case CMD_ADC_2048: delay(6); break;
+      case CMD_ADC_4096: delay(10); break;
+
+   }
+  
+  Wire.beginTransmission(PSEN_ADDRESS); // transmit to device #112
+  Wire.write(CMD_ADC_READ);      // sets register pointer to echo #1 register (0x02)
+  Wire.endTransmission();      // stop transmitting
+  
+  // step 4: request reading from sensor
+  Wire.requestFrom(PSEN_ADDRESS, 3);    // request 2 bytes from slave device #112
+
+  // step 5: receive reading from sensor
+  if(2 <= Wire.available())    // if two bytes were received
+  {
+    ret = Wire.read();  // receive high byte (overwrites previous reading)
+    reading = 65536 * ret;    // shift high byte to be high 8 bits
+    ret = Wire.read() << 8; // receive low byte as lower 8 bits
+    reading = reading + 256*ret;
+    ret = Wire.read();
+    reading = reading + ret;
+    
+    return reading;   // print the reading
+}
+}
+
+//Miscellaneous Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setOnoff(){

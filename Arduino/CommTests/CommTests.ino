@@ -20,20 +20,17 @@ void loop() {
   // put your main code here, to run repeatedly:
   //recvFullLine();
 
-  /*if (newData == true){
-    setOnoff();
-    
-    }*/
+  
   recvOneChar();
   //AHAH();
-
-  dataArray[0] = 1.1;
-  dataArray[1] = 2.2;
-  dataArray[2] = 3.3;
-  sendArr();
-  
+  setOnoff();
   if(onoff){    
-    digitalWrite(13,HIGH);
+    digitalWrite(13,HIGH);    
+
+  dataArray[0] = random(10);
+  dataArray[1] = random(10);
+  dataArray[2] = random(10);
+  sendArr();
   }
   else{
     digitalWrite(13,HIGH);
@@ -62,14 +59,6 @@ void setOnoff(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void sendArr(){
-  if(newData == true && receivedChar == 'B'){
-    onoff = true;
-    Reset();
-    }
-  else if(newData == true && receivedChar == 'E'){
-    onoff = false;
-    Reset();
-    }
     
   if(onoff){
     for(int i=0; i<sizeof(dataArray) / sizeof(dataArray[0]); i++){
