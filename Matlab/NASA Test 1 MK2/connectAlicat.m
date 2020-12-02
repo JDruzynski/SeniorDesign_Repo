@@ -4,7 +4,7 @@ function aliComm=connectAlicat
 % connects to COM port hard-coded into file. User may overide
 % this.
 
-COM='COM1';
+COM='COM3';
 
 fprintf('Connecting to Alicats on port %s\n',COM)
 

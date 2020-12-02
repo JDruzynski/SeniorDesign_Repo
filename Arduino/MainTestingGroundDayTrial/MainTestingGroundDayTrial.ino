@@ -119,60 +119,78 @@ float p_c[][10] = {{0.0    , 0.0    , 0.    ,  0.    , -0.    , 0.    ,  0.0001,
          {0.038, 0.113, 0.213, 0.313, 0.413, 0.513, 0.613, 0.713, 0.813, 0.913}};
 
 
-bool onoff = false, newData = false;
-char receivedChar;
-String readString;
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   
   //Initialize each sensor, make sure they are wired
-  Wire.begin();
+  //Wire.begin();
 
-  readSystemSettings(); //Load zeroOffset and calibrationFactor from EEPROM
+  //readSystemSettings(); //Load zeroOffset and calibrationFactor from EEPROM
 
-  myScale.setSampleRate(NAU7802_SPS_320); //Increase to max sample rate
-  myScale.calibrateAFE(); //Re-cal analog front end when we change gain, sample rate, or channel 
+  //myScale.setSampleRate(NAU7802_SPS_320); //Increase to max sample rate
+  //myScale.calibrateAFE(); //Re-cal analog front end when we change gain, sample rate, or channel 
 
   
-  myStepper.setSpeed(rolePerMinute);
+  //myStepper.setSpeed(rolePerMinute);
   
-  digitalWrite(Relay, RELAY_OFF);      // initialise the relay to off
   pinMode(Relay, OUTPUT); 
+  digitalWrite(Relay, RELAY_OFF);      // initialise the relay to off
   
 }
 
+bool onoff = false, newData = false;
+char receivedChar;
+String readString;
+
 void loop() {
   // put your main code here, to run repeatedly:
-  
   recvOneChar();
 
-  wireTestAndSetup();  
+  //wireTestAndSetup();  
   
-  myScale_Tare();
+  //myScale_Tare();
 
   switchRelay();
-
-  runMotor();
 
   setOnoff();
   
   if (onoff){
     //[T1,T2,P,T_P,W,L]
-    PReading = readPSen();
-    dataArray[0] = PReading.P; //Sensor readings go here
-    dataArray[1] = PReading.T;
-    dataArray[2] = getScale();
-    dataArray[3] = getRadiometer();
+    //PReading = readPSen();
+    dataArray[0] = random(20,23); //Sensor readings go here
+    dataArray[1] = random(20,23);
+    dataArray[2] = random(20,23);
+    dataArray[3] = random(20,23);
     sendArr();
     
     }
-  
+     
   Reset();
  
   delay(1000);
  }
+
+//Relay Function(s)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void switchRelay(){
+  // O for open, C for closed
+  if(newData == true && receivedChar == 'O'){
+    //Turns relay on
+    digitalWrite(Relay, RELAY_ON);
+    
+    Reset();
+    }
+  
+  else if(newData == true && receivedChar == 'C'){
+    //Turns relay off
+    digitalWrite(Relay, RELAY_OFF);     
+    Reset();
+    }
+}
 
 //Setup Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,14 +246,6 @@ void myScale_Tare(){
         
     Reset();
     }  
-  }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void mcp_Setup(){
-  mcp.setThermocoupleType(MCP9600_TYPE_K);
-  mcp.setFilterCoefficient(3);
-  mcp.enable(true);
   }
   
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,43 +343,7 @@ float getScale(){
   return avgWeight;
 }
 
-//Relay Function(s)
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void switchRelay(){
-  // O for open, C for closed
-  if(newData == true && receivedChar == '0'){
-    //Turns relay on
-    digitalWrite(Relay, RELAY_ON);
-    
-    Reset();
-    }
-  
-  else if(newData == true && receivedChar == 'C'){
-    //Turns relay off
-    digitalWrite(Relay, RELAY_OFF);
-    
-    Reset();
-    }
-}
-
-//Motor Function(s)
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void runMotor(){
-  // F for forward, R for reverse
-  if(newData == true && receivedChar == 'F'){
-    //Runs motor forward for the motor run time at the set speed
-    myStepper.step(stepsPerRevolution/4);
-    Reset();
-    }
-  
-  else if(newData == true && receivedChar == 'R'){
-    //Runs motor backward for the motor run time at the set speed
-    myStepper.step(-stepsPerRevolution/4);
-    Reset();
-    }
-}
 
 //Pressure Sensor Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -597,31 +571,6 @@ void wireTestAndSetup(){
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void AHAH(){
-  if(newData == true && receivedChar == 'B'){
-    onoff = true;
-    Reset();
-    }
-  else if(newData == true && receivedChar == 'E'){
-    onoff = false;
-    }
-    
-  if(onoff){
-    Serial.println("1 AHAHAH");
-    delay(100);
-    Serial.println("2 AHAHAH");
-    delay(100);
-    Serial.println("3 AHAHAH");
-    delay(100);
-    Serial.println("4 AHAHAH");
-    delay(100);
-    Serial.println("5 AHAHAH");
-    delay(100);  
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 void sendArr(){
   if(onoff){
     for(int i=0; i<sizeof(dataArray) / sizeof(dataArray[0]); i++){
@@ -629,26 +578,9 @@ void sendArr(){
       //Serial.print(i);
       //Serial.print(",");
       Serial.print(dataArray[i]);
-      Serial.print("|");
+      Serial.print(F("|"));
    }
-   Serial.print("\n");
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void recvFullLine(){
-  while (Serial.available()) {
-    delay(3);  //delay to allow buffer to fill
-    if (Serial.available() >0) {
-      char c = Serial.read();  //gets one byte from serial buffer
-      readString += c; //makes the string readString
-    }
-  }
-  
-  if (readString.length()>0){
-  Serial.print(readString);
-  newData = true;
+   Serial.print(F("\n"));
   }
 }
 
